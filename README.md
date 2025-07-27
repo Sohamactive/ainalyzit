@@ -6,7 +6,6 @@ An AI-powered food analysis application that uses Google's Gemini Vision API to 
 
 - 📸 **Image Analysis**: Upload food packaging or ingredient lists for AI analysis
 - 🧬 **Health Scoring**: Get detailed health scores and Nutri-Scores
-- 🌱 **Eco-Scoring**: Environmental impact assessment
 - 📊 **Interactive Charts**: Visual representation of nutritional data
 - 🔄 **Alternatives**: Healthier product recommendations
 - 📱 **Responsive Design**: Works on all devices
