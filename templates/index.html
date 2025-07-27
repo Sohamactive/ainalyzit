@@ -664,8 +664,8 @@
         }
 
         function populateCharts(analysis) {
-            const healthScore = analysis.processingScore ? (analysis.processingScore.score / 10) : 0;
-            document.getElementById('overall-score-value').textContent = healthScore.toFixed(1);
+            const healthScore = analysis.processingScore ? (analysis.processingScore.score) : 0;
+            document.getElementById('overall-score-value').textContent = healthScore;
             createEnhancedDoughnutChart('overall-score-chart', healthScore, overallScoreChart, ['#8b5cf6', '#374151']);
             
             const scoreMap = {'A': 10, 'B': 8, 'C': 6, 'D': 4, 'E': 2, 'N/A': 0};

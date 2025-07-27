@@ -6,42 +6,148 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ainalyzit - Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #111827; }
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--dark-gradient);
+            min-height: 100vh;
+        }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .glass-effect {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+        .gradient-text {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
     </style>
 </head>
-<body class="text-gray-200">
-
-    <header class="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700">
-        <nav class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-white">ainalyzit Dashboard</h1>
-            <div>
-                <a href="{% url 'analysis:index' %}" class="text-gray-300 hover:text-white mr-4">Analyze</a>
-                <a href="{% url 'users:logout' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">Logout</a>
+<body class="text-gray-300">
+    <header class="sticky top-0 z-50 border-b border-gray-800" style="backdrop-filter: blur(20px); background: rgba(17, 24, 39, 0.9);">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="{% url 'analysis:index' %}" class="text-3xl font-orbitron gradient-text font-bold">ainalyzit</a>
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'users:logout' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition-all duration-300 hover:scale-105">Logout</a>
             </div>
         </nav>
     </header>
 
     <main class="container mx-auto p-4 md:p-8">
-        <div class="text-center mb-8">
-            <h2 class="text-3xl font-bold text-white">Welcome, {{ session.userinfo.name }}!</h2>
+        <div class="mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold font-orbitron text-white">Welcome Back, <span class="gradient-text">{{ request.user.username }}</span></h1>
+            <p class="text-xl text-gray-400 mt-2">Here's a look at your health journey.</p>
         </div>
-        <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <!-- Daily Score Card -->
-            <div class="bg-gray-800 p-8 rounded-2xl text-center">
-                <p class="text-gray-400 text-lg font-medium">Today's Score</p>
-                <p class="text-7xl font-bold text-white my-4">{{ daily_score }}<span class="text-3xl text-gray-500">/100</span></p>
-                <p class="text-gray-400">Keep logging to improve your score!</p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div class="glass-effect p-8 rounded-3xl text-center">
+                <h3 class="text-lg font-semibold text-gray-400 uppercase tracking-wider">Average Score</h3>
+                <p class="text-5xl font-bold font-orbitron text-white mt-4">{{ average_score }}</p>
             </div>
-            <!-- Streak Card -->
-            <div class="bg-gray-800 p-8 rounded-2xl text-center">
-                <p class="text-gray-400 text-lg font-medium">Current Streak</p>
-                <p class="text-7xl font-bold text-white my-4">🔥 {{ streak }}</p>
-                <p class="text-gray-400">Log a meal every day to keep it going!</p>
+            <div class="glass-effect p-8 rounded-3xl text-center">
+                <h3 class="text-lg font-semibold text-gray-400 uppercase tracking-wider">Total Meals Logged</h3>
+                <p class="text-5xl font-bold font-orbitron text-white mt-4">{{ total_meals }}</p>
+            </div>
+            <div class="glass-effect p-8 rounded-3xl text-center">
+                <h3 class="text-lg font-semibold text-gray-400 uppercase tracking-wider">Best Meal Score</h3>
+                <p class="text-5xl font-bold font-orbitron text-white mt-4">{{ best_meal.score|default:"N/A" }}</p>
+                <p class="text-gray-500 mt-2">{{ best_meal.food_name }}</p>
+            </div>
+        </div>
+
+        <div class="glass-effect p-8 rounded-3xl mb-12 h-96">
+    <h3 class="text-2xl font-bold text-white font-orbitron mb-6">Health Score Trend (Last 30 Days)</h3>
+    <canvas id="healthScoreChart"></canvas>
+</div>
+
+        <div class="glass-effect p-8 rounded-3xl">
+            <h3 class="text-2xl font-bold text-white font-orbitron mb-6">Recent Meal History</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-gray-700">
+                            <th class="p-4 uppercase text-sm font-semibold text-gray-400">Date</th>
+                            <th class="p-4 uppercase text-sm font-semibold text-gray-400">Food Name</th>
+                            <th class="p-4 uppercase text-sm font-semibold text-gray-400 text-right">Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for meal in recent_meal_logs %}
+                        <tr class="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                            <td class="p-4">{{ meal.timestamp|date:"M d, Y" }}</td>
+                            <td class="p-4 font-semibold text-white">{{ meal.food_name }}</td>
+                            <td class="p-4 text-right font-bold text-lg font-orbitron text-indigo-400">{{ meal.score }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center p-8 text-gray-500">
+                                You haven't logged any meals yet. Start by analyzing a food item!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
 
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const ctx = document.getElementById('healthScoreChart').getContext('2d');
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(102, 126, 234, 0.5)');
+            gradient.addColorStop(1, 'rgba(118, 75, 162, 0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: {{ chart_labels|safe }},
+                    datasets: [{
+                        label: 'Health Score',
+                        data: {{ chart_data|safe }},
+                        borderColor: '#8b5cf6',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#fff',
+                        pointBorderColor: '#8b5cf6',
+                        pointHoverRadius: 8,
+                        pointHoverBorderWidth: 3,
+                        tension: 0.4,
+                        fill: true,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 10,
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        },
+                        x: {
+                            ticks: { color: '#9ca3af' },
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        });
+    </script>
 </body>
 </html>

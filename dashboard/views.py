@@ -1,29 +1,31 @@
-from django.shortcuts import render
+# ainalyzit/dashboard/views.py
+
+from django.shortcuts import render, redirect
+from django.urls import reverse
 from .services import get_user_stats
 
 def dashboard_view(request):
     """
-    Renders the user's dashboard with their daily score and streak.
-    This view should require a user to be logged in.
+    Renders the user's dashboard with their meal analysis statistics.
     """
     user_info = request.session.get('user')
     if not user_info:
-        # If the user is not logged in, redirect them to the login page.
-        # You would typically use Django's redirect shortcut here.
-        # from django.shortcuts import redirect
-        # return redirect('users:login')
-        # For now, we'll render an error message on a simple page.
-        return render(request, 'error.html', {'message': 'Please log in to view your dashboard.'})
+        return redirect(reverse('users:login'))
 
-    # Get the real user ID from the session
     user_id = user_info.get("userinfo", {}).get("sub")
+    if not user_id:
+        return render(request, 'error.html', {'message': 'Could not identify user from session.'})
     
     stats = get_user_stats(user_id)
     
     context = {
-        'daily_score': stats['daily_score'],
-        'streak': stats['streak'],
-        'session': user_info # Pass the full session info for the header
+        'session': user_info,
+        'average_score': stats.get('average_score', 0),
+        'total_meals': stats.get('total_meals', 0),
+        'best_meal': stats.get('best_meal'),
+        'recent_meal_logs': stats.get('recent_meal_logs', []),
+        'chart_labels': stats.get('chart_labels', []),
+        'chart_data': stats.get('chart_data', [])
     }
     
     return render(request, 'dashboard.html', context)

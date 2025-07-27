@@ -1,71 +1,83 @@
+# ainalyzit/dashboard/services.py
+
 import datetime
-from analysis.services import get_db_handle # We can reuse the DB connection function
-
-def log_meal_to_db(user_id, food_name, nutritional_score):
-    """
-    Saves a user's meal choice to the 'daily_logs' collection in MongoDB.
-    """
-    db, client = get_db_handle()
-    logs_collection = db['daily_logs']
-
-    log_document = {
-        "userId": user_id,
-        "logDate": datetime.datetime.now(datetime.timezone.utc).date().isoformat(),
-        "timestamp": datetime.datetime.now(datetime.timezone.utc),
-        "foodName": food_name,
-        "nutritionalScore": nutritional_score
-    }
-    
-    result = logs_collection.insert_one(log_document)
-    client.close()
-    return result.inserted_id
-
 from analysis.services import get_db_handle
-
-# ... (keep your existing log_meal_to_db function) ...
+from bson.son import SON
+import pymongo
 
 def get_user_stats(user_id):
     """
-    Calculates the daily score and streak for a given user.
+    Calculates a comprehensive set of statistics for a given user's dashboard.
     """
     db, client = get_db_handle()
     logs_collection = db['daily_logs']
     
-    today_str = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-
-    # --- 1. Calculate Today's Average Score ---
-    pipeline = [
-        {'$match': {'userId': user_id, 'logDate': today_str}},
+    # --- 1. Basic Stats ---
+    total_meals = logs_collection.count_documents({'userId': user_id})
+    
+    # --- 2. Average Score ---
+    avg_pipeline = [
+        {'$match': {'userId': user_id}},
         {'$group': {'_id': '$userId', 'averageScore': {'$avg': '$nutritionalScore'}}}
     ]
-    daily_avg_result = list(logs_collection.aggregate(pipeline))
+    avg_result = list(logs_collection.aggregate(avg_pipeline))
+    average_score = round(avg_result[0]['averageScore']) if avg_result else 0
     
-    daily_score = 0
-    if daily_avg_result:
-        daily_score = round(daily_avg_result[0]['averageScore'])
-
-    # --- 2. Calculate Streak ---
-    streak = 0
-    current_date = datetime.datetime.now(datetime.timezone.utc).date()
+    # --- 3. Best Meal ---
+    best_meal_cursor = logs_collection.find({'userId': user_id}).sort('nutritionalScore', pymongo.DESCENDING).limit(1)
+    best_meal = next(best_meal_cursor, None)
     
-    # Find all unique dates the user has logged a meal on, in descending order
-    distinct_dates_cursor = logs_collection.distinct(
-        'logDate',
-        {'userId': user_id}
-    )
-    logged_dates = sorted([datetime.date.fromisoformat(d) for d in distinct_dates_cursor], reverse=True)
-
-    for i, log_date in enumerate(logged_dates):
-        # Check if the log date is today or a consecutive day before today
-        if log_date == (current_date - datetime.timedelta(days=i)):
-            streak += 1
-        else:
-            # The streak is broken
-            break
-            
+    # --- 4. Recent Meals ---
+    recent_meal_logs = list(logs_collection.find({'userId': user_id}).sort('timestamp', pymongo.DESCENDING).limit(5))
+    
+    # --- 5. Health Score Trend (Last 30 Days) ---
+    thirty_days_ago = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=30)
+    trend_pipeline = [
+        {'$match': {
+            'userId': user_id,
+            'timestamp': {'$gte': thirty_days_ago}
+        }},
+        {'$project': {
+            'date': {'$dateToString': {'format': '%Y-%m-%d', 'date': '$timestamp'}},
+            'score': '$nutritionalScore'
+        }},
+        {'$group': {
+            '_id': '$date',
+            'avgScore': {'$avg': '$score'}
+        }},
+        {'$sort': SON([('_id', 1)])}
+    ]
+    trend_data = list(logs_collection.aggregate(trend_pipeline))
+    
+    chart_labels = [entry['_id'] for entry in trend_data]
+    chart_data = [round(entry['avgScore'], 1) for entry in trend_data]
+    
     client.close()
 
     return {
-        'daily_score': daily_score,
-        'streak': streak
+        'average_score': average_score,
+        'total_meals': total_meals,
+        'best_meal': best_meal,
+        'recent_meal_logs': recent_meal_logs,
+        'chart_labels': chart_labels,
+        'chart_data': chart_data
     }
+
+def log_meal_to_db(user_id, food_name, score):
+    """
+    Manually logs a meal to the daily_logs collection.
+    This is used for the manual "Log Meal" feature.
+    """
+    db, client = get_db_handle()
+    logs_collection = db['daily_logs']
+    
+    log_entry = {
+        "userId": user_id,
+        "foodName": food_name,
+        "nutritionalScore": score,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc)
+    }
+    
+    result = logs_collection.insert_one(log_entry)
+    client.close()
+    return result.inserted_id

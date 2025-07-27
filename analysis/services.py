@@ -96,3 +96,38 @@ def call_gemini_api(image_file, serving_size):
     analysis_data["eco_score"] = off_data["eco_score"]
 
     return json.dumps(analysis_data)
+
+# In analysis/services.py
+
+# ... (keep all your existing functions like get_db_handle, call_gemini_api, etc.) ...
+
+# Add this new function at the end of the file
+def log_analysis_to_db(user_id, analysis_data):
+    """
+    Logs the result of a food analysis to the 'daily_logs' collection in MongoDB.
+    """
+    if not analysis_data:
+        print("No analysis data provided to log.")
+        return
+
+    db, client = get_db_handle()
+    logs_collection = db['daily_logs']
+    
+    try:
+        # Prepare the document to be inserted
+        log_entry = {
+            "userId": user_id,
+            "foodName": analysis_data.get("productName", "Unknown Food"),
+            "nutritionalScore": analysis_data.get("processingScore", {}).get("score", 0),
+            "analysis": analysis_data, # Store the full analysis object
+            "timestamp": datetime.now(datetime.timezone.utc)
+        }
+        
+        # Insert the document into the collection
+        logs_collection.insert_one(log_entry)
+        print(f"Successfully logged analysis for user {user_id}")
+        
+    except Exception as e:
+        print(f"Error logging analysis to MongoDB: {e}")
+    finally:
+        client.close()
