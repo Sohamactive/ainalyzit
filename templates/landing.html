@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ainalyzit - Understand Your Food</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* Tailwind gray-950 */
+            overflow-x: hidden;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #8b5cf6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glow-effect {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0) 60%);
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .feature-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="text-gray-300">
+
+    <!-- Header -->
+    <header class="absolute top-0 left-0 w-full z-10">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">ainalyzit</h1>
+            <a href="{% url 'users:login' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-5 rounded-lg transition duration-300">
+                Login
+            </a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="relative min-h-screen flex items-center justify-center text-center px-4">
+        <div class="glow-effect"></div>
+        <div class="z-0">
+            <h2 class="text-5xl md:text-7xl font-black text-white leading-tight">
+                Stop Guessing. <br> <span class="gradient-text">Start Analyzing.</span>
+            </h2>
+            <p class="mt-6 max-w-2xl mx-auto text-lg text-gray-400">
+                Transform confusing food labels into simple, actionable insights. Just snap a picture, and let our AI do the rest.
+            </p>
+            <div class="mt-10">
+                <a href="{% url 'users:login' %}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded-lg text-lg transition duration-300 transform hover:scale-105">
+                    Get Started for Free
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Features Section -->
+    <section class="py-20">
+        <div class="container mx-auto px-6">
+            <div class="text-center mb-12">
+                <h3 class="text-4xl font-bold text-white">How It Works</h3>
+                <p class="text-gray-400 mt-2">A simple three-step process to better health.</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="feature-card p-8 rounded-2xl">
+                    <div class="text-4xl text-indigo-400 mb-4">1.</div>
+                    <h4 class="text-xl font-bold text-white mb-2">Upload</h4>
+                    <p class="text-gray-400">Snap a clear picture of any food product's ingredient list and nutrition facts.</p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="feature-card p-8 rounded-2xl">
+                    <div class="text-4xl text-indigo-400 mb-4">2.</div>
+                    <h4 class="text-xl font-bold text-white mb-2">Analyze</h4>
+                    <p class="text-gray-400">Our AI instantly processes the image, scoring each ingredient and providing a simple, overall health score.</p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="feature-card p-8 rounded-2xl">
+                    <div class="text-4xl text-indigo-400 mb-4">3.</div>
+                    <h4 class="text-xl font-bold text-white mb-2">Understand</h4>
+                    <p class="text-gray-400">Get clear insights, allergen warnings, and healthier alternatives to make informed decisions.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</body>
+</html>

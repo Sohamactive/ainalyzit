@@ -1,0 +1,974 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ainalyzit - Interactive Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --dark-gradient: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
+        }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: var(--dark-gradient);
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+
+        /* Animated background */
+        .bg-animated {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bg-animated::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        /* Enhanced glassmorphism */
+        .glass-effect {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+        }
+
+        .glass-card {
+            background: rgba(31, 41, 55, 0.8);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 35px 70px -12px rgba(0, 0, 0, 0.9);
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+
+        /* Enhanced chart styling */
+        .chart-container { 
+            position: relative; 
+            width: 140px; 
+            height: 140px;
+            margin: 0 auto;
+        }
+
+        .chart-label { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            text-align: center;
+            z-index: 10;
+        }
+
+        .chart-score { 
+            font-family: 'Orbitron', sans-serif; 
+            font-size: 2.2rem; 
+            color: white; 
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        .chart-text { 
+            font-size: 0.7rem; 
+            color: #9ca3af; 
+            text-transform: uppercase; 
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+        }
+
+        /* Enhanced ingredient cards */
+        .ingredient-card { 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ingredient-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .ingredient-card:hover::before {
+            left: 100%;
+        }
+
+        .ingredient-card:hover {
+            transform: translateX(8px);
+            border-color: rgba(99, 102, 241, 0.6);
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+
+        .ingredient-details { 
+            max-height: 0; 
+            overflow: hidden; 
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0;
+        }
+
+        .ingredient-card.expanded .ingredient-details { 
+            max-height: 200px; 
+            padding-top: 1rem; 
+            opacity: 1;
+        }
+
+        /* Enhanced alternative cards */
+        .alternative-card { 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent; 
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alternative-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 0;
+            height: 100%;
+            background: var(--primary-gradient);
+            transition: width 0.3s ease;
+            z-index: 1;
+        }
+
+        .alternative-card:hover::after {
+            width: 4px;
+        }
+
+        .alternative-card:hover { 
+            transform: translateY(-8px) scale(1.03);
+            border-image: var(--primary-gradient) 1;
+            box-shadow: 0 20px 40px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Enhanced buttons */
+        .btn-primary {
+            background: var(--primary-gradient);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(99, 102, 241, 0.4);
+        }
+
+        /* Pulse animations */
+        .pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Loading animations */
+        .loading-dots {
+            display: inline-block;
+        }
+
+        .loading-dots::after {
+            content: '';
+            animation: loading-dots 1.5s infinite;
+        }
+
+        @keyframes loading-dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+
+        /* Gradient text */
+        .gradient-text {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Floating elements */
+        .float-animation {
+            animation: float-gentle 6s ease-in-out infinite;
+        }
+
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Score indicators */
+        .score-excellent { color: #10b981; text-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+        .score-good { color: #3b82f6; text-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .score-average { color: #f59e0b; text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .score-poor { color: #ef4444; text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+
+        /* Navigation enhancements */
+        .nav-blur {
+            backdrop-filter: blur(20px);
+            background: rgba(17, 24, 39, 0.9);
+        }
+
+        /* Responsive grid improvements */
+        @media (max-width: 768px) {
+            .chart-container {
+                width: 100px;
+                height: 100px;
+            }
+            .chart-score {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-300 bg-animated">
+    <header class="nav-blur border-b border-gray-800 sticky top-0 z-50">
+        <nav class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <a href="{% url 'analysis:index' %}" class="text-3xl font-orbitron gradient-text font-bold">ainalyzit</a>
+            <div class="flex items-center space-x-4">
+                {% if session %}
+                    <a href="{% url 'dashboard:dashboard' %}" class="text-gray-300 hover:text-white transition-colors duration-300 font-medium">Dashboard</a>
+                    <a href="{% url 'users:logout' %}" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition-all duration-300 hover:scale-105">Logout</a>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="btn-primary text-white font-bold py-2 px-6 rounded-full">Login</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 md:p-8">
+        <section id="upload-section" class="glass-effect p-8 md:p-12 rounded-3xl shadow-2xl max-w-3xl mx-auto border border-gray-700 float-animation">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl md:text-5xl font-bold font-orbitron gradient-text mb-4">Analyze Your Food</h2>
+                <p class="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">Upload an image of the ingredients to get an instant, comprehensive analysis with AI-powered insights.</p>
+                {% if not session %}
+                    <div class="mt-4 p-4 bg-amber-900/20 border border-amber-700 rounded-xl">
+                        <p class="text-amber-300 text-sm">
+                            <svg class="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.996-.833-2.764 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            You'll need to log in to save your analysis and track your meals.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+            <form id="upload-form">
+                <div class="space-y-8">
+                    <div class="transform transition-all duration-300 hover:scale-105">
+                        <label for="serving-size-input" class="block text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Serving Size</label>
+                        <input type="text" id="serving-size-input" class="w-full bg-gray-800/50 border border-gray-600 rounded-xl px-6 py-4 text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:border-indigo-500 transition-all duration-300 backdrop-blur-sm" placeholder="e.g., '1 bowl' or '150g'" required>
+                    </div>
+                    <div class="transform transition-all duration-300 hover:scale-105">
+                        <label for="file-upload-input" class="block text-sm font-semibold text-gray-300 mb-3 uppercase tracking-wider">Ingredient Image</label>
+                        <input type="file" id="file-upload-input" class="w-full text-sm text-gray-400 file:mr-4 file:py-4 file:px-6 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer transition-all duration-300" accept="image/*" required>
+                    </div>
+                    <button type="submit" class="w-full btn-primary text-white font-bold py-4 px-8 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 font-orbitron">
+                        Analyze Now
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <div id="loading-overlay" class="fixed inset-0 bg-gray-950/90 backdrop-blur-md flex flex-col justify-center items-center z-50 hidden">
+            <div class="text-center">
+                <div class="relative mb-8">
+                    <svg class="animate-spin h-16 w-16 text-indigo-500 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <div class="absolute inset-0 rounded-full border-2 border-indigo-300 opacity-20 animate-ping"></div>
+                </div>
+                <p id="loading-text" class="text-2xl text-white font-orbitron font-semibold loading-dots">Analyzing specimen</p>
+                <div class="mt-4 w-64 bg-gray-700 rounded-full h-2 mx-auto">
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 h-2 rounded-full animate-pulse" style="width: 60%"></div>
+                </div>
+            </div>
+        </div>
+
+        <section id="report-section" class="mt-16 max-w-7xl mx-auto hidden" style="position: relative; z-index: 10;">
+            <!-- Enhanced Summary Header -->
+            <div class="glass-effect p-8 md:p-12 rounded-3xl shadow-2xl border border-gray-700 mb-8">
+                <div class="flex flex-col lg:flex-row items-center gap-12">
+                    <div class="text-center lg:text-left flex-grow">
+                        <h2 id="product-name" class="text-5xl md:text-6xl font-bold font-orbitron gradient-text mb-4">Product Name</h2>
+                        <p id="product-summary" class="text-xl text-gray-300 leading-relaxed max-w-2xl"></p>
+                    </div>
+                    <div class="flex justify-center gap-8 flex-wrap">
+                        <div class="text-center">
+                            <div class="chart-container mb-4">
+                                <canvas id="overall-score-chart"></canvas>
+                                <div class="chart-label">
+                                    <span id="overall-score-value" class="chart-score">--</span>
+                                    <div class="chart-text">Health Score</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced Details Grid -->
+            <div class="grid lg:grid-cols-3 gap-8 mb-16">
+                <div class="lg:col-span-2 glass-card p-8 rounded-3xl border border-gray-700">
+                    <div class="flex items-center mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white font-orbitron">Interactive Ingredient List</h3>
+                    </div>
+                    <div id="ingredients-list" class="space-y-4"></div>
+                </div>
+                
+                <div class="glass-card p-8 rounded-3xl border border-gray-700">
+                    <div class="flex items-center mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-full flex items-center justify-center mr-4">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white font-orbitron">Log Your Choice</h3>
+                    </div>
+                    <p class="text-gray-400 mb-6 leading-relaxed">Select the item you consumed to track your daily score and build healthy habits.</p>
+                    <div id="alternatives-list" class="space-y-4"></div>
+                    <p id="log-confirmation" class="text-green-400 mt-6 font-semibold hidden p-4 bg-green-900/20 rounded-xl border border-green-700"></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- ELEMENT REFS & CHART INSTANCES ---
+        const uploadForm = document.getElementById('upload-form');
+        const uploadInput = document.getElementById('file-upload-input');
+        const servingSizeInput = document.getElementById('serving-size-input');
+        const uploadSection = document.getElementById('upload-section');
+        const reportSection = document.getElementById('report-section');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        let overallScoreChart, nutriScoreChart, ecoScoreChart;
+
+        // Enhanced loading messages
+        const loadingMessages = [
+            "Calibrating quantum sensors",
+            "Scanning molecular structures", 
+            "Cross-referencing nutritional database",
+            "Analyzing compound interactions", 
+            "Processing health indicators",
+            "Generating comprehensive report"
+        ];
+
+        // --- EVENT LISTENERS ---
+        uploadForm.addEventListener('submit', handleAnalysisSubmit);
+
+        // Add hover animations to form inputs
+        [servingSizeInput, uploadInput].forEach(input => {
+            input.addEventListener('focus', () => {
+                anime({
+                    targets: input.parentElement,
+                    scale: 1.02,
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+            
+            input.addEventListener('blur', () => {
+                anime({
+                    targets: input.parentElement,
+                    scale: 1,
+                    duration: 300,
+                    easing: 'easeOutQuad'
+                });
+            });
+        });
+
+        // --- CORE ANALYSIS LOGIC ---
+        function handleAnalysisSubmit(event) {
+            event.preventDefault();
+            if (!uploadInput.files.length || !servingSizeInput.value) {
+                showNotification("Please provide both an image and a serving size.", 'error');
+                return;
+            }
+
+            startLoadingAnimation();
+            
+            const formData = new FormData();
+            formData.append('image', uploadInput.files[0]);
+            formData.append('servingSize', servingSizeInput.value);
+            const csrftoken = getCookie('csrftoken');
+
+            fetch('/api/analyze/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+                body: formData
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    // User is not authenticated
+                    throw new Error('AUTHENTICATION_REQUIRED');
+                }
+                return res.json().then(data => ({ ok: res.ok, data }));
+            })
+            .then(({ ok, data }) => {
+                if (!ok) throw new Error(data.error);
+                populateReportData(data.analysis);
+                stopLoadingAnimation();
+            })
+            .catch(handleError);
+        }
+
+        function startLoadingAnimation() {
+            // Ensure scrolling is enabled
+            document.body.style.overflow = 'auto';
+            
+            // Hide upload section with animation
+            anime({
+                targets: uploadSection,
+                opacity: 0,
+                translateY: -50,
+                duration: 600,
+                easing: 'easeInQuad',
+                complete: () => {
+                    uploadSection.classList.add('hidden');
+                    loadingOverlay.style.display = 'flex';
+                    loadingOverlay.style.opacity = 0;
+                    
+                    anime({
+                        targets: loadingOverlay,
+                        opacity: 1,
+                        duration: 400,
+                        easing: 'easeOutQuad'
+                    });
+                }
+            });
+
+            // Animate loading text
+            let messageIndex = 0;
+            const messageInterval = setInterval(() => {
+                loadingText.textContent = loadingMessages[messageIndex];
+                messageIndex = (messageIndex + 1) % loadingMessages.length;
+                
+                anime({
+                    targets: loadingText,
+                    scale: [1, 1.1, 1],
+                    duration: 800,
+                    easing: 'easeInOutQuad'
+                });
+            }, 1200);
+
+            loadingOverlay.messageInterval = messageInterval;
+        }
+
+        function stopLoadingAnimation() {
+            clearInterval(loadingOverlay.messageInterval);
+            
+            anime({
+                targets: loadingOverlay,
+                opacity: 0,
+                duration: 600,
+                easing: 'easeInQuad',
+                complete: () => {
+                    loadingOverlay.style.display = 'none';
+                    // Ensure the report section is visible and scrollable
+                    document.body.style.overflow = 'auto';
+                    // Scroll to report section after animation
+                    setTimeout(() => {
+                        document.getElementById('report-section').scrollIntoView({ 
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }, 300);
+                }
+            });
+        }
+
+        // --- UI POPULATION ---
+        function populateReportData(analysis) {
+            reportSection.style.opacity = 0;
+            reportSection.classList.remove('hidden');
+            
+            // Animate report appearance
+            anime({
+                targets: reportSection,
+                opacity: 1,
+                translateY: [50, 0],
+                duration: 1000,
+                easing: 'easeOutCubic'
+            });
+            
+            // Populate content with staggered animations
+            setTimeout(() => {
+                document.getElementById('product-name').textContent = analysis.productName || 'Unknown Product';
+                document.getElementById('product-summary').textContent = analysis.overallSummary?.title || 'Analysis complete';
+
+                // Animate product name
+                anime({
+                    targets: '#product-name',
+                    opacity: [0, 1],
+                    translateX: [-100, 0],
+                    duration: 800,
+                    easing: 'easeOutCubic'
+                });
+
+                populateIngredients(analysis.ingredients || []);
+                populateAlternatives(analysis);
+                populateCharts(analysis);
+            }, 300);
+        }
+
+        function populateIngredients(ingredients) {
+            const ingredientsList = document.getElementById('ingredients-list');
+            ingredientsList.innerHTML = '';
+            
+            ingredients.forEach((ing, index) => {
+                const score = Number(ing.score);
+                const scoreClass = score >= 8 ? 'score-excellent' : score >= 6 ? 'score-good' : score >= 4 ? 'score-average' : 'score-poor';
+                const glowColor = score >= 8 ? 'rgba(16, 185, 129, 0.3)' : score >= 6 ? 'rgba(59, 130, 246, 0.3)' : score >= 4 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+
+                const card = document.createElement('div');
+                card.className = 'ingredient-card glass-card p-6 rounded-2xl cursor-pointer border border-gray-600';
+                card.style.opacity = '0';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-white text-lg">${ing.name}</span>
+                        <span class="font-bold font-orbitron text-xl ${scoreClass}">${ing.score}/10</span>
+                    </div>
+                    <div class="ingredient-details text-gray-300 text-sm mt-2">
+                        <p class="leading-relaxed">${ing.description || 'No description available.'}</p>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    card.classList.toggle('expanded');
+                    anime({
+                        targets: card,
+                        boxShadow: card.classList.contains('expanded') ? `0 20px 40px ${glowColor}` : '0 10px 30px rgba(0,0,0,0.3)',
+                        duration: 300,
+                        easing: 'easeOutQuad'
+                    });
+                });
+                
+                ingredientsList.appendChild(card);
+
+                // Staggered animation
+                setTimeout(() => {
+                    anime({
+                        targets: card,
+                        opacity: 1,
+                        translateX: [-50, 0],
+                        duration: 600,
+                        easing: 'easeOutCubic'
+                    });
+                }, index * 100);
+            });
+        }
+
+        function populateAlternatives(analysis) {
+            const alternativesList = document.getElementById('alternatives-list');
+            alternativesList.innerHTML = '';
+            
+            const originalItem = {
+                name: analysis.productName,
+                score: analysis.processingScore?.score || 0,
+                reason: "The item you scanned"
+            };
+            const allChoices = [originalItem, ...(analysis.healthierAlternatives || [])];
+            
+            allChoices.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'alternative-card glass-card p-6 rounded-2xl cursor-pointer border border-gray-600';
+                card.style.opacity = '0';
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex-grow mr-4">
+                            <h4 class="font-bold text-white text-lg mb-1">${item.name}</h4>
+                            <p class="text-sm text-gray-400 leading-relaxed">${item.reason}</p>
+                        </div>
+                        <div class="text-center">
+                            <span class="font-bold font-orbitron text-xl text-indigo-400">${item.score}</span>
+                            <div class="text-xs text-gray-500 uppercase tracking-wider">Score</div>
+                        </div>
+                    </div>`;
+                
+                card.addEventListener('click', () => handleMealLog(item.name, item.score));
+                alternativesList.appendChild(card);
+
+                // Staggered animation
+                setTimeout(() => {
+                    anime({
+                        targets: card,
+                        opacity: 1,
+                        translateY: [30, 0],
+                        duration: 600,
+                        easing: 'easeOutCubic'
+                    });
+                }, index * 150);
+            });
+        }
+
+        function populateCharts(analysis) {
+            const healthScore = analysis.processingScore ? (analysis.processingScore.score / 10) : 0;
+            document.getElementById('overall-score-value').textContent = healthScore.toFixed(1);
+            createEnhancedDoughnutChart('overall-score-chart', healthScore, overallScoreChart, ['#8b5cf6', '#374151']);
+            
+            const scoreMap = {'A': 10, 'B': 8, 'C': 6, 'D': 4, 'E': 2, 'N/A': 0};
+            const nutriScoreVal = (analysis.nutri_score || 'N/A').toUpperCase();
+            document.getElementById('nutri-score-value').textContent = nutriScoreVal;
+            createEnhancedDoughnutChart('nutri-score-chart', scoreMap[nutriScoreVal] || 0, nutriScoreChart, ['#10b981', '#374151']);
+
+            const ecoScoreVal = (analysis.eco_score || 'N/A').toUpperCase();
+            document.getElementById('eco-score-value').textContent = ecoScoreVal;
+            createEnhancedDoughnutChart('eco-score-chart', scoreMap[ecoScoreVal] || 0, ecoScoreChart, ['#3b82f6', '#374151']);
+
+            // Animate charts after creation
+            setTimeout(() => {
+                anime({
+                    targets: '.chart-container',
+                    scale: [0.8, 1],
+                    opacity: [0, 1],
+                    duration: 1200,
+                    delay: anime.stagger(200),
+                    easing: 'easeOutElastic(1, .6)'
+                });
+            }, 500);
+        }
+        
+        // --- ENHANCED CHART CREATION ---
+        function createEnhancedDoughnutChart(canvasId, score, chartInstance, colors) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const gradient1 = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient1.addColorStop(0, colors[0]);
+            gradient1.addColorStop(1, colors[0] + '80');
+            
+            const gradient2 = ctx.createLinearGradient(0, 0, 0, 280);
+            gradient2.addColorStop(0, colors[1]);
+            gradient2.addColorStop(1, colors[1] + '60');
+
+            const data = { 
+                datasets: [{ 
+                    data: [score, 10 - score], 
+                    backgroundColor: [gradient1, gradient2],
+                    borderColor: ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)'],
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    spacing: 2
+                }] 
+            };
+            
+            const options = { 
+                responsive: true, 
+                maintainAspectRatio: true,
+                cutout: '80%', 
+                plugins: { 
+                    tooltip: { enabled: false },
+                    legend: { display: false }
+                }, 
+                animation: { 
+                    animateRotate: true, 
+                    duration: 2000,
+                    easing: 'easeOutBounce'
+                }
+            };
+            
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = [score, 10 - score];
+                chartInstance.update('active');
+            } else {
+                if (canvasId === 'overall-score-chart') {
+                    overallScoreChart = new Chart(ctx, { type: 'doughnut', data, options });
+                } else if (canvasId === 'nutri-score-chart') {
+                    nutriScoreChart = new Chart(ctx, { type: 'doughnut', data, options });
+                } else if (canvasId === 'eco-score-chart') {
+                    ecoScoreChart = new Chart(ctx, { type: 'doughnut', data, options });
+                }
+            }
+        }
+
+        function handleMealLog(foodName, score) {
+            const csrftoken = getCookie('csrftoken');
+            
+            // Add visual feedback
+            const allCards = document.querySelectorAll('.alternative-card');
+            allCards.forEach(card => {
+                if (card.textContent.includes(foodName)) {
+                    anime({
+                        targets: card,
+                        scale: [1, 1.1, 1],
+                        backgroundColor: ['rgba(31, 41, 55, 0.8)', 'rgba(99, 102, 241, 0.3)', 'rgba(31, 41, 55, 0.8)'],
+                        duration: 800,
+                        easing: 'easeInOutQuad'
+                    });
+                }
+            });
+
+            fetch('/api/log_meal/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify({ foodName: foodName, score: score })
+            })
+            .then(res => {
+                if (res.status === 401) {
+                    throw new Error('AUTHENTICATION_REQUIRED');
+                }
+                return res.json().then(data => ({ ok: res.ok, data }));
+            })
+            .then(({ ok, data }) => {
+                if (!ok) throw new Error(data.error);
+                showLogConfirmation(`✨ Successfully logged: ${foodName}`);
+            })
+            .catch(error => {
+                if (error.message === 'AUTHENTICATION_REQUIRED') {
+                    showAuthenticationModal();
+                } else {
+                    showNotification(`Failed to log meal: ${error.message}`, 'error');
+                }
+            });
+        }
+
+        function showLogConfirmation(message) {
+            const confirmationEl = document.getElementById('log-confirmation');
+            confirmationEl.textContent = message;
+            confirmationEl.classList.remove('hidden');
+            
+            anime({
+                targets: confirmationEl,
+                opacity: [0, 1],
+                translateY: [-20, 0],
+                scale: [0.9, 1],
+                duration: 600,
+                easing: 'easeOutCubic'
+            });
+            
+            setTimeout(() => {
+                anime({
+                    targets: confirmationEl,
+                    opacity: 0,
+                    translateY: [0, -20],
+                    scale: [1, 0.9],
+                    duration: 600,
+                    easing: 'easeInCubic',
+                    complete: () => confirmationEl.classList.add('hidden')
+                });
+            }, 4000);
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-green-600' : 'bg-blue-600';
+            
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-xl shadow-2xl z-50 transform translate-x-full opacity-0`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            anime({
+                targets: notification,
+                translateX: 0,
+                opacity: 1,
+                duration: 500,
+                easing: 'easeOutCubic'
+            });
+            
+            setTimeout(() => {
+                anime({
+                    targets: notification,
+                    translateX: '100%',
+                    opacity: 0,
+                    duration: 500,
+                    easing: 'easeInCubic',
+                    complete: () => notification.remove()
+                });
+            }, 3000);
+        }
+
+        function handleError(error) {
+            stopLoadingAnimation();
+            
+            // Check if it's an authentication error
+            if (error.message === 'AUTHENTICATION_REQUIRED') {
+                showAuthenticationModal();
+                return;
+            }
+            
+            // Animate upload section back in
+            uploadSection.classList.remove('hidden');
+            uploadSection.style.opacity = 0;
+            anime({
+                targets: uploadSection,
+                opacity: 1,
+                translateY: [50, 0],
+                duration: 600,
+                easing: 'easeOutQuad'
+            });
+            
+            console.error('Error:', error);
+            showNotification(`Analysis failed: ${error.message}`, 'error');
+        }
+
+        function showAuthenticationModal() {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-gray-950/90 backdrop-blur-md flex flex-col justify-center items-center z-50';
+            modal.innerHTML = `
+                <div class="glass-effect p-8 rounded-3xl max-w-md mx-4 text-center border border-gray-700">
+                    <div class="w-16 h-16 bg-gradient-to-r from-red-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold text-white font-orbitron mb-4">Authentication Required</h3>
+                    <p class="text-gray-300 mb-6 leading-relaxed">Please log in to analyze your food and track your meals. This helps us provide personalized insights and save your analysis history.</p>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <a href="{% url 'users:login' %}" class="btn-primary text-white font-bold py-3 px-6 rounded-xl text-center transition-all duration-300 hover:scale-105">
+                            Login Now
+                        </a>
+                        <button onclick="this.closest('.fixed').remove()" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-xl transition-all duration-300">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Animate modal appearance
+            modal.style.opacity = '0';
+            anime({
+                targets: modal,
+                opacity: 1,
+                duration: 400,
+                easing: 'easeOutQuad'
+            });
+            
+            anime({
+                targets: modal.querySelector('.glass-effect'),
+                scale: [0.8, 1],
+                duration: 600,
+                easing: 'easeOutElastic(1, .6)'
+            });
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Initialize page animations
+        anime({
+            targets: 'nav',
+            translateY: [-50, 0],
+            opacity: [0, 1],
+            duration: 800,
+            easing: 'easeOutCubic'
+        });
+
+        anime({
+            targets: '#upload-section',
+            translateY: [100, 0],
+            opacity: [0, 1],
+            duration: 1000,
+            delay: 300,
+            easing: 'easeOutCubic'
+        });
+
+        // Remove problematic parallax effect that might interfere with scrolling
+        // Add simple scroll-to-top functionality instead
+        let scrollToTopBtn = document.createElement('button');
+        scrollToTopBtn.innerHTML = '↑';
+        scrollToTopBtn.className = 'fixed bottom-8 right-8 bg-indigo-600 hover:bg-indigo-700 text-white w-12 h-12 rounded-full shadow-lg z-50 opacity-0 transition-all duration-300 flex items-center justify-center text-xl font-bold';
+        scrollToTopBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.body.appendChild(scrollToTopBtn);
+
+        window.addEventListener('scroll', () => {
+            if (window.pageYOffset > 300) {
+                scrollToTopBtn.style.opacity = '1';
+                scrollToTopBtn.style.transform = 'scale(1)';
+            } else {
+                scrollToTopBtn.style.opacity = '0';
+                scrollToTopBtn.style.transform = 'scale(0.8)';
+            }
+        });
+
+        // Add smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    });
+    </script>
+</body>
+</html>
