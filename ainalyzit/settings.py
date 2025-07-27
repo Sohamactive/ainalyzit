@@ -18,7 +18,13 @@ if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is required")
 
 DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = []
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# You can also add your local host for testing
+ALLOWED_HOSTS.append('127.0.0.1')
 
 
 # Application definition
