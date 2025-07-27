@@ -25,7 +25,7 @@ if RENDER_EXTERNAL_HOSTNAME:
 
 # You can also add your local host for testing
 ALLOWED_HOSTS.append('127.0.0.1')
-
+DEBUG = True
 
 # Application definition
 INSTALLED_APPS = [
