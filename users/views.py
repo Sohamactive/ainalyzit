@@ -4,7 +4,19 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from urllib.parse import urlencode
 from ainalyzit.settings import oauth # Import the oauth instance
+from authlib.integrations.django_client import OAuth
 import os
+oauth = OAuth()
+
+oauth.register(
+    "auth0",
+    client_id=os.getenv("AUTH0_CLIENT_ID"),
+    client_secret=os.getenv("AUTH0_CLIENT_SECRET"),
+    client_kwargs={
+        "scope": "openid profile email",
+    },
+    server_metadata_url=f'https://{os.getenv("AUTH0_DOMAIN")}/.well-known/openid-configuration'
+)
 def login(request):
     return oauth.auth0.authorize_redirect(
         request, request.build_absolute_uri(reverse("users:callback"))
